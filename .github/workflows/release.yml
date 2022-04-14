@@ -8,6 +8,13 @@ on:
   push:
     tags:
       - "llvmorg-*"
+  workflow_dispatch:
+    inputs:
+      upstream-tagname:
+        type: text
+        required: true
+        description: 'tag name to checkout from llvmorg'
+        default: 'llvmorg-13.0.1'
 
 jobs:
   create_release:
@@ -22,6 +29,14 @@ jobs:
     - uses: GuillaumeFalourd/setup-windows10-sdk-action@v1
       with:
         sdk-version: 19041
+        
+    - name: Checkout by pushing tags
+      if: ${{ github.event_name == 'push' }}
+      run: git clone --branch ${{ github.ref_name }} --depth 1 https://github.com/llvm/llvm-project.git
+      
+    - name: Checkout by workflow dispatch
+      if: ${{ github.event_name == 'workflow_dispatch' }}
+      run: git clone --branch ${{ github.event.inputs.upstream-tagname }} --depth 1 https://github.com/llvm/llvm-project.git
 
     - name: Build llvm
       run: |
@@ -30,7 +45,6 @@ jobs:
         Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments "-arch=x64 -host_arch=x64 -winsdk=10.0.19041.0"
         $Env:CC = "clang-cl"
         $Env:CXX = "clang-cl"
-        git clone --branch ${{github.ref_name}} --depth 1 https://github.com/llvm/llvm-project.git
         cmake -Bbuild -GNinja -DCMAKE_SYSTEM_VERSION=10.0.19041.0 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL -DCMAKE_BUILD_TYPE=Release -DCPACK_GENERATOR=ZIP "-DCMAKE_INSTALL_PREFIX=$pwd\\prefix" -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" llvm-project\\llvm
         cmake --build build
 
