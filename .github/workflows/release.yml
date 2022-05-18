@@ -29,11 +29,11 @@ jobs:
     - uses: GuillaumeFalourd/setup-windows10-sdk-action@v1
       with:
         sdk-version: 19041
-        
+
     - name: Checkout by pushing tags
       if: ${{ github.event_name == 'push' }}
       run: git clone --branch ${{ github.ref_name }} --depth 1 https://github.com/llvm/llvm-project.git
-      
+
     - name: Checkout by workflow dispatch
       if: ${{ github.event_name == 'workflow_dispatch' }}
       run: git clone --branch ${{ github.event.inputs.upstream-tagname }} --depth 1 https://github.com/llvm/llvm-project.git
@@ -45,7 +45,8 @@ jobs:
         Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments "-arch=x64 -host_arch=x64 -winsdk=10.0.19041.0"
         $Env:CC = "clang-cl"
         $Env:CXX = "clang-cl"
-        cmake -Bbuild -GNinja -DCMAKE_SYSTEM_VERSION=10.0.19041.0 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL -DCMAKE_BUILD_TYPE=Release -DCPACK_GENERATOR=ZIP "-DCMAKE_INSTALL_PREFIX=$pwd\\prefix" -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" llvm-project\\llvm
+        $cmake_sys_ver = "10.0.19041.0"
+        cmake -Bbuild -GNinja "-DCMAKE_SYSTEM_VERSION=$cmake_sys_ver" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL -DCMAKE_BUILD_TYPE=Release -DCPACK_GENERATOR=ZIP "-DCMAKE_INSTALL_PREFIX=$pwd\\prefix" -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" llvm-project\\llvm
         cmake --build build
 
     - name: Package llvm
@@ -63,12 +64,18 @@ jobs:
         draft: true
         prerelease: true
 
-    - name: Upload ${{ matrix.name }} zip package
+    - name: Get LLVM version
+      id: get_version
+      run: |
+        version=$(echo ${{ github.ref_name }} | cut -d- -f2)
+        echo "::set-output name=version::$version"
+    - name: Upload LLVM ${{ steps.get_version.outputs.version }} zip package
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: build/LLVM-*-win64.zip
+        asset_path: build/LLVM-${{ steps.get_version.outputs.version }}-win64.zip
+        asset_name: LLVM-${{ steps.get_version.outputs.version }}-win64.zip
         asset_content_type: application/zip
 
