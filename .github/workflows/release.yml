@@ -8,13 +8,6 @@ on:
   push:
     tags:
       - "llvmorg-*"
-  workflow_dispatch:
-    inputs:
-      upstream-tagname:
-        type: text
-        required: true
-        description: 'tag name to checkout from llvmorg'
-        default: 'llvmorg-13.0.1'
 
 jobs:
   create_release:
@@ -32,11 +25,7 @@ jobs:
 
     - name: Checkout by pushing tags
       if: ${{ github.event_name == 'push' }}
-      run: git clone --branch ${{ github.ref_name }} --depth 1 https://github.com/llvm/llvm-project.git
-
-    - name: Checkout by workflow dispatch
-      if: ${{ github.event_name == 'workflow_dispatch' }}
-      run: git clone --branch ${{ github.event.inputs.upstream-tagname }} --depth 1 https://github.com/llvm/llvm-project.git
+      run: git clone --branch llvmorg-13.0.1 --depth 1 https://github.com/llvm/llvm-project.git
 
     - name: Build llvm
       run: |
@@ -59,23 +48,18 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: WasmEdge ${{ github.ref }}
+        tag_name: llvmorg-13.0.1
+        release_name: llvmorg-13.0.1
         draft: true
         prerelease: true
 
-    - name: Get LLVM version
-      id: get_version
-      run: |
-        version=$(echo ${{ github.ref_name }} | cut -d- -f2)
-        echo "::set-output name=version::$version"
-    - name: Upload LLVM ${{ steps.get_version.outputs.version }} zip package
+    - name: Upload LLVM zip package
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: build/LLVM-${{ steps.get_version.outputs.version }}-win64.zip
-        asset_name: LLVM-${{ steps.get_version.outputs.version }}-win64.zip
+        asset_path: build/LLVM-13.0.1-win64.zip
+        asset_name: LLVM-13.0.1-win64.zip
         asset_content_type: application/zip
 
