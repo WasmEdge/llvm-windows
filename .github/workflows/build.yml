@@ -18,6 +18,9 @@ jobs:
   build:
     name: Build llvm on Windows
     runs-on: windows-2022
+    strategy:
+      matrix:
+        rtlib: ["MultiThreaded", "MultiThreadedDLL", "MultiThreadedDebug", "MultiThreadedDebugDLL"]
     steps:
     - name: Install dependency
       uses: crazy-max/ghaction-chocolatey@v1
@@ -36,8 +39,8 @@ jobs:
         $Env:CC = "clang-cl"
         $Env:CXX = "clang-cl"
         $cmake_sys_ver = "10.0.19041.0"
-        git clone --branch llvmorg-13.0.1 --depth 1 https://github.com/llvm/llvm-project.git
-        cmake -Bbuild -GNinja "-DCMAKE_SYSTEM_VERSION=$cmake_sys_ver" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL -DCMAKE_BUILD_TYPE=Release -DCPACK_GENERATOR=ZIP "-DCMAKE_INSTALL_PREFIX=$pwd\\prefix" -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" llvm-project\\llvm
+        git clone --branch llvmorg-15.0.7 --depth 1 https://github.com/llvm/llvm-project.git
+        cmake -Bbuild -GNinja "-DCMAKE_SYSTEM_VERSION=$cmake_sys_ver" -DCMAKE_MSVC_RUNTIME_LIBRARY=${{ matrix.rtlib }} -DCMAKE_BUILD_TYPE=Release -DCPACK_GENERATOR=ZIP "-DCMAKE_INSTALL_PREFIX=$pwd\\prefix" -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" llvm-project\\llvm
         cmake --build build
 
     - name: Package llvm
@@ -47,6 +50,6 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v2
       with:
-        name: llvm
+        name: llvm-${{ matrix.rtlib }}
         path: build/*.zip
-        retention-days: 5
+        retention-days: 14
