@@ -11,8 +11,29 @@ on:
 
 jobs:
   create_release:
-    name: Build llvm on Windows
+    name: Create release
     runs-on: windows-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: llvmorg-15.0.7
+        release_name: llvmorg-15.0.7
+        draft: true
+        prerelease: true
+
+  upload_assets:
+    name: Build llvm on Windows
+    needs: create_release
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        rtlib: ["MultiThreaded", "MultiThreadedDLL", "MultiThreadedDebug", "MultiThreadedDebugDLL"]
     steps:
     - name: Install dependency
       uses: crazy-max/ghaction-chocolatey@v1
@@ -25,7 +46,7 @@ jobs:
 
     - name: Checkout by pushing tags
       if: ${{ github.event_name == 'push' }}
-      run: git clone --branch llvmorg-13.0.1 --depth 1 https://github.com/llvm/llvm-project.git
+      run: git clone --branch llvmorg-15.0.7 --depth 1 https://github.com/llvm/llvm-project.git
 
     - name: Build llvm
       run: |
@@ -35,31 +56,19 @@ jobs:
         $Env:CC = "clang-cl"
         $Env:CXX = "clang-cl"
         $cmake_sys_ver = "10.0.19041.0"
-        cmake -Bbuild -GNinja "-DCMAKE_SYSTEM_VERSION=$cmake_sys_ver" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL -DCMAKE_BUILD_TYPE=Release -DCPACK_GENERATOR=ZIP "-DCMAKE_INSTALL_PREFIX=$pwd\\prefix" -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" llvm-project\\llvm
+        cmake -Bbuild -GNinja "-DCMAKE_SYSTEM_VERSION=$cmake_sys_ver" -DCMAKE_MSVC_RUNTIME_LIBRARY=${{ matrix.rtlib }} -DCMAKE_BUILD_TYPE=Release -DCPACK_GENERATOR=ZIP "-DCMAKE_INSTALL_PREFIX=$pwd\\prefix" -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" llvm-project\\llvm
         cmake --build build
 
     - name: Package llvm
       run: |
         cmake --build build --target package
 
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: llvmorg-13.0.1
-        release_name: llvmorg-13.0.1
-        draft: true
-        prerelease: true
-
     - name: Upload LLVM zip package
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: build/LLVM-13.0.1-win64.zip
-        asset_name: LLVM-13.0.1-win64.zip
+        upload_url: ${{ $needs.create_release.outputs.upload_url }}
+        asset_path: build/LLVM-15.0.7-win64.zip
+        asset_name: LLVM-15.0.7-win64-${{ matrix.rtlib }}.zip
         asset_content_type: application/zip
-
