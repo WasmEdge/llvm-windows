@@ -22,8 +22,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: llvmorg-15.0.7
-        release_name: llvmorg-15.0.7
+        tag_name: llvmorg-16.0.6
+        release_name: llvmorg-16.0.6
         draft: true
         prerelease: true
 
@@ -33,7 +33,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        rtlib: ["MultiThreaded"]
+        rtlib: ["MultiThreadedDLL"]
     steps:
     - name: Install dependency
       uses: crazy-max/ghaction-chocolatey@v1
@@ -46,7 +46,7 @@ jobs:
 
     - name: Checkout by pushing tags
       if: ${{ github.event_name == 'push' }}
-      run: git clone --branch llvmorg-15.0.7 --depth 1 https://github.com/llvm/llvm-project.git
+      run: git clone --branch llvmorg-16.0.6 --depth 1 https://github.com/llvm/llvm-project.git
 
     - name: Build llvm
       run: |
@@ -56,7 +56,7 @@ jobs:
         $Env:CC = "clang-cl"
         $Env:CXX = "clang-cl"
         $cmake_sys_ver = "10.0.19041.0"
-        cmake -Bbuild -GNinja "-DCMAKE_SYSTEM_VERSION=$cmake_sys_ver" -DCMAKE_MSVC_RUNTIME_LIBRARY=${{ matrix.rtlib }} -DCMAKE_BUILD_TYPE=Release -DCPACK_GENERATOR=ZIP "-DCMAKE_INSTALL_PREFIX=$pwd\\prefix" -DLLVM_USE_CRT_RELEASE=MT -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" llvm-project\\llvm
+        cmake -Bbuild -GNinja "-DCMAKE_SYSTEM_VERSION=$cmake_sys_ver" -DCMAKE_MSVC_RUNTIME_LIBRARY=${{ matrix.rtlib }} -DCMAKE_BUILD_TYPE=Release -DCPACK_GENERATOR=ZIP "-DCMAKE_INSTALL_PREFIX=$pwd\\prefix" -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" llvm-project\\llvm
         cmake --build build
 
     - name: Package llvm
@@ -69,6 +69,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: build/LLVM-15.0.7-win64.zip
-        asset_name: LLVM-15.0.7-win64-${{ matrix.rtlib }}.zip
+        asset_path: build/LLVM-16.0.6-win64.zip
+        asset_name: LLVM-16.0.6-win64-${{ matrix.rtlib }}.zip
         asset_content_type: application/zip
