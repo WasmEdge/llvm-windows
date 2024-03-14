@@ -22,8 +22,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: llvmorg-16.0.6
-        release_name: llvmorg-16.0.6
+        tag_name: llvmorg-17.0.6
+        release_name: llvmorg-17.0.6
         draft: true
         prerelease: true
 
@@ -46,7 +46,7 @@ jobs:
 
     - name: Checkout by pushing tags
       if: ${{ github.event_name == 'push' }}
-      run: git clone --branch llvmorg-16.0.6 --depth 1 https://github.com/llvm/llvm-project.git
+      run: git clone --branch llvmorg-17.0.6 --depth 1 https://github.com/llvm/llvm-project.git
 
     - name: Build llvm
       run: |
@@ -69,6 +69,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: build/LLVM-16.0.6-win64.zip
-        asset_name: LLVM-16.0.6-win64-${{ matrix.rtlib }}.zip
+        asset_path: build/LLVM-17.0.6-win64.zip
+        asset_name: LLVM-17.0.6-win64-${{ matrix.rtlib }}.zip
         asset_content_type: application/zip
