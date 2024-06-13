@@ -52,7 +52,7 @@ jobs:
       if: ${{ github.event_name == 'push' }}
       run: git clone --branch llvmorg-17.0.6 --depth 1 https://github.com/llvm/llvm-project.git
 
-    - name: Build llvm
+    - name: Build llvm stage 1
       run: |
         $vsPath = (vswhere -latest -property installationPath)
         Import-Module (Join-Path $vsPath "Common7\Tools\Microsoft.VisualStudio.DevShell.dll")
@@ -61,10 +61,19 @@ jobs:
         $Env:CXX = "clang-cl"
         $cmake_sys_ver = "10.0.22621.0"
         cmake -Bbuild -GNinja "-DCMAKE_SYSTEM_VERSION=$cmake_sys_ver" -DCMAKE_MSVC_RUNTIME_LIBRARY=${{ matrix.rtlib }} -DCMAKE_BUILD_TYPE=Release -DCPACK_GENERATOR=ZIP "-DCMAKE_INSTALL_PREFIX=$pwd\\prefix" -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" -DLLVM_ENABLE_DIA_SDK=OFF llvm-project\\llvm
-        cmake --build build
+        cmake --build build --target package
+        Expand-Archive -Path build/*.zip -DestinationPath "$pwd"
+        Remove-Item -Recurse -Force build
 
-    - name: Package llvm
+    - name: Build llvm stage 2
       run: |
+        $vsPath = (vswhere -latest -property installationPath)
+        Import-Module (Join-Path $vsPath "Common7\Tools\Microsoft.VisualStudio.DevShell.dll")
+        Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments "-arch=x64 -host_arch=x64 -winsdk=10.0.22621.0"
+        $Env:CC = "$pwd\\LLVM-17.0.6-win64\\bin\\clang-cl.exe"
+        $Env:CXX = "$pwd\\LLVM-17.0.6-win64\\bin\\clang-cl.exe"
+        $cmake_sys_ver = "10.0.22621.0"
+        cmake -Bbuild -GNinja "-DCMAKE_SYSTEM_VERSION=$cmake_sys_ver" -DCMAKE_MSVC_RUNTIME_LIBRARY=${{ matrix.rtlib }} -DCMAKE_BUILD_TYPE=Release -DCPACK_GENERATOR=ZIP "-DCMAKE_INSTALL_PREFIX=$pwd\\prefix" -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" -DLLVM_ENABLE_DIA_SDK=OFF llvm-project\\llvm
         cmake --build build --target package
 
     - name: Upload LLVM zip package
