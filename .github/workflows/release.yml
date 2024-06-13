@@ -77,11 +77,7 @@ jobs:
         cmake --build build --target package
 
     - name: Upload LLVM zip package
-      uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: build/LLVM-17.0.6-win64.zip
-        asset_name: LLVM-17.0.6-win64-${{ matrix.rtlib }}.zip
-        asset_content_type: application/zip
+      run: |
+        gh release upload LLVM-17.0.6-win64-${{ matrix.rtlib }}.zip build/LLVM-17.0.6-win64.zip --clobber
