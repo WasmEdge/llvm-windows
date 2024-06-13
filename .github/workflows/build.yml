@@ -25,7 +25,7 @@ jobs:
     - name: Install dependency
       uses: crazy-max/ghaction-chocolatey@v1
       with:
-        args: install cmake ninja vswhere
+        args: install cmake ninja vswhere 7zip.install
     - name: Upgrade dependency
       uses: crazy-max/ghaction-chocolatey@v1
       with:
@@ -62,9 +62,19 @@ jobs:
         cmake -Bbuild -GNinja "-DCMAKE_SYSTEM_VERSION=$cmake_sys_ver" -DCMAKE_MSVC_RUNTIME_LIBRARY=${{ matrix.rtlib }} -DCMAKE_BUILD_TYPE=Release -DCPACK_GENERATOR=ZIP "-DCMAKE_INSTALL_PREFIX=$pwd\\prefix" -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" -DLLVM_ENABLE_DIA_SDK=OFF llvm-project\\llvm
         cmake --build build --target package
 
+    - name: Repack zip package
+      run: |
+        $name = (Get-Item build/LLVM-*.zip).Name
+        $basename = (Get-Item build/LLVM-*.zip).BaseName
+        Remove-Item -Recurse -Force "$basename"
+        Expand-Archive -Path "build/$name" -DestinationPath "$pwd"
+        Remove-Item "build/$name"
+        7z a -mx=9 -tzip -mtm=off -mtc=off -mta=off "build/$name" "$basename"
+
     - name: Upload Artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: llvm-${{ matrix.rtlib }}
         path: build/*.zip
         retention-days: 14
+        compression-level: 0
