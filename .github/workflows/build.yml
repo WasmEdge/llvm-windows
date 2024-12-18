@@ -25,56 +25,55 @@ jobs:
     - name: Install dependency
       uses: crazy-max/ghaction-chocolatey@v1
       with:
-        args: install cmake ninja vswhere 7zip.install
+        args: install --no-progress ninja vswhere 7zip.install
     - name: Upgrade dependency
       uses: crazy-max/ghaction-chocolatey@v1
       with:
-        args: upgrade llvm
+        args: upgrade --no-progress llvm
 
     - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
       with:
-        sdk-version: 22621
+        sdk-version: 26100
 
-    - name: Checkout by pushing tags
-      run: git clone --branch llvmorg-17.0.6 --depth 1 https://github.com/llvm/llvm-project.git
+    - name: Checkout llvm
+      run: git clone --quiet --branch llvmorg-19.1.6 --depth 1 https://github.com/llvm/llvm-project.git
 
     - name: Build llvm stage 1
       run: |
         $vsPath = (vswhere -latest -property installationPath)
         Import-Module (Join-Path $vsPath "Common7\Tools\Microsoft.VisualStudio.DevShell.dll")
-        Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments "-arch=x64 -host_arch=x64 -winsdk=10.0.22621.0"
+        Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments "-arch=x64 -host_arch=x64 -winsdk=10.0.26100.0"
+        $prefix = "$pwd\prefix"
         $Env:CC = "clang-cl"
         $Env:CXX = "clang-cl"
-        $cmake_sys_ver = "10.0.22621.0"
-        cmake -Bbuild -GNinja "-DCMAKE_SYSTEM_VERSION=$cmake_sys_ver" -DCMAKE_MSVC_RUNTIME_LIBRARY=${{ matrix.rtlib }} -DCMAKE_BUILD_TYPE=Release -DCPACK_GENERATOR=ZIP "-DCMAKE_INSTALL_PREFIX=$pwd\\prefix" -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" -DLLVM_ENABLE_DIA_SDK=OFF llvm-project\\llvm
-        cmake --build build --target package
-        Expand-Archive -Path build/*.zip -DestinationPath "$pwd"
+        $cmake_mt = "mt"
+        $cmake_sys_ver = "10.0.26100.0"
+        cmake -Bbuild -GNinja -DCMAKE_SYSTEM_VERSION=$cmake_sys_ver -DCMAKE_MSVC_RUNTIME_LIBRARY=${{ matrix.rtlib }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=$prefix -DCMAKE_MT:PATH=$cmake_mt -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" -DLLVM_ENABLE_DIA_SDK=OFF llvm-project\llvm
+        cmake --build build --target install
         Remove-Item -Recurse -Force build
 
     - name: Build llvm stage 2
       run: |
         $vsPath = (vswhere -latest -property installationPath)
         Import-Module (Join-Path $vsPath "Common7\Tools\Microsoft.VisualStudio.DevShell.dll")
-        Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments "-arch=x64 -host_arch=x64 -winsdk=10.0.22621.0"
-        $Env:CC = "$pwd\\LLVM-17.0.6-win64\\bin\\clang-cl.exe"
-        $Env:CXX = "$pwd\\LLVM-17.0.6-win64\\bin\\clang-cl.exe"
-        $cmake_sys_ver = "10.0.22621.0"
-        cmake -Bbuild -GNinja "-DCMAKE_SYSTEM_VERSION=$cmake_sys_ver" -DCMAKE_MSVC_RUNTIME_LIBRARY=${{ matrix.rtlib }} -DCMAKE_BUILD_TYPE=Release -DCPACK_GENERATOR=ZIP "-DCMAKE_INSTALL_PREFIX=$pwd\\prefix" -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" -DLLVM_ENABLE_DIA_SDK=OFF llvm-project\\llvm
-        cmake --build build --target package
+        Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments "-arch=x64 -host_arch=x64 -winsdk=10.0.26100.0"
+        $prefix = "$pwd\prefix"
+        $Env:CC = "$prefix\bin\clang-cl.exe"
+        $Env:CXX = "$prefix\bin\clang-cl.exe"
+        $cmake_mt = "mt"
+        $cmake_sys_ver = "10.0.26100.0"
+        cmake -Bbuild -GNinja -DCMAKE_SYSTEM_VERSION=$cmake_sys_ver -DCMAKE_MSVC_RUNTIME_LIBRARY=${{ matrix.rtlib }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=$prefix -DCMAKE_MT:PATH=$cmake_mt -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" -DLLVM_ENABLE_DIA_SDK=OFF llvm-project\llvm
+        cmake --build build --target install
 
     - name: Repack zip package
       run: |
-        $name = (Get-Item build/LLVM-*.zip).Name
-        $basename = (Get-Item build/LLVM-*.zip).BaseName
-        Remove-Item -Recurse -Force "$basename"
-        Expand-Archive -Path "build/$name" -DestinationPath "$pwd"
-        Remove-Item "build/$name"
-        7z a -mx=9 -tzip -mtm=off -mtc=off -mta=off "build/$name" "$basename"
+        Rename-Item prefix LLVM-19.1.6-win64
+        7z a -mx=9 -tzip -mtm=off -mtc=off -mta=off LLVM-19.1.6-win64-${{ matrix.rtlib }}.zip LLVM-19.1.6-win64
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: llvm-${{ matrix.rtlib }}
-        path: build/*.zip
+        path: LLVM-*.zip
         retention-days: 14
         compression-level: 0
