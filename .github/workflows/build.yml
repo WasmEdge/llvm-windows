@@ -17,7 +17,7 @@ on:
 jobs:
   build:
     name: Build llvm on Windows
-    runs-on: windows-2022
+    runs-on: windows-2025
     strategy:
       matrix:
         rtlib: ["MultiThreadedDLL"]
@@ -36,7 +36,7 @@ jobs:
         sdk-version: 26100
 
     - name: Checkout llvm
-      run: git clone --quiet --branch llvmorg-19.1.6 --depth 1 https://github.com/llvm/llvm-project.git
+      run: git clone --quiet --branch llvmorg-21.1.3 --depth 1 https://github.com/llvm/llvm-project.git
 
     - name: Build llvm stage 1
       run: |
@@ -65,10 +65,10 @@ jobs:
         cmake -Bbuild -GNinja -DCMAKE_SYSTEM_VERSION=$cmake_sys_ver -DCMAKE_MSVC_RUNTIME_LIBRARY=${{ matrix.rtlib }} -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=$prefix -DCMAKE_MT:PATH=$cmake_mt -DLLVM_TARGETS_TO_BUILD="X86" -DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" -DLLVM_ENABLE_DIA_SDK=OFF llvm-project\llvm
         cmake --build build --target install
 
-    - name: Repack zip package
+    - name: Create zip package
       run: |
-        Rename-Item prefix LLVM-19.1.6-win64
-        7z a -mx=9 -tzip -mtm=off -mtc=off -mta=off LLVM-19.1.6-win64-${{ matrix.rtlib }}.zip LLVM-19.1.6-win64
+        Rename-Item prefix LLVM-21.1.3-win64
+        7z a -mx=9 -tzip -mtm=off -mtc=off -mta=off LLVM-21.1.3-win64-${{ matrix.rtlib }}.zip LLVM-21.1.3-win64
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
